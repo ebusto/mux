@@ -19,7 +19,7 @@ func TestMux(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 255; i++ {
 		wg.Add(1)
 
 		go testMux(t, &wg, streamId(i), ma, mb)
