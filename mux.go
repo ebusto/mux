@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-var order = binary.LittleEndian
+var streamOrder = binary.LittleEndian
 
 type (
 	streamId   uint8
@@ -64,12 +64,16 @@ func (m *Mux) relayRead() {
 		var id streamId
 		var sz streamSize
 
-		if err := binary.Read(m.br, order, &id); err != nil {
+		if err := binary.Read(m.br, streamOrder, &id); err != nil {
 			panic(err)
 		}
 
-		if err := binary.Read(m.br, order, &sz); err != nil {
+		if err := binary.Read(m.br, streamOrder, &sz); err != nil {
 			panic(err)
+		}
+
+		if sz == 0 {
+			continue
 		}
 
 		m.Lock()
@@ -107,12 +111,12 @@ func (m *Mux) relayWrite() {
 		// If the stream doesn't exist, this will SIGSEGV. As it should.
 		s.Lock()
 
-		if err := binary.Write(m.bw, order, id); err != nil {
+		if err := binary.Write(m.bw, streamOrder, id); err != nil {
 			panic(err)
 		}
 
 		// TODO: The write buffer may be larger than a uint32 can represent.
-		if err := binary.Write(m.bw, order, streamSize(s.bw.Len())); err != nil {
+		if err := binary.Write(m.bw, streamOrder, streamSize(s.bw.Len())); err != nil {
 			panic(err)
 		}
 
@@ -158,6 +162,7 @@ func (s *Stream) Read(p []byte) (int, error) {
 	}
 
 	n, err := s.br.Read(p)
+
 	s.Unlock()
 
 	return n, err
