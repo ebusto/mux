@@ -53,14 +53,12 @@ func (m *Mux) Close() error {
 }
 
 func (m *Mux) relayRead() {
-	buf := make([]byte, 1)
-
 	for {
-		if _, err := m.br.Read(buf); err != nil {
+		id, err := m.br.ReadByte()
+
+		if err != nil {
 			panic(err)
 		}
-
-		id := buf[0]
 
 		size, err := binary.ReadVarint(m.br)
 
@@ -112,7 +110,7 @@ func (m *Mux) relayWrite() {
 
 		s.Lock()
 
-		if _, err := m.bw.Write([]byte{id}); err != nil {
+		if err := m.bw.WriteByte(id); err != nil {
 			panic(err)
 		}
 
