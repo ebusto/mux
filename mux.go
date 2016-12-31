@@ -8,32 +8,25 @@ import (
 	"sync"
 )
 
-var streamOrder = binary.LittleEndian
-
-type (
-	StreamId   uint8
-	StreamSize uint32
-)
-
 type Mux struct {
 	br *bufio.Reader
 	bw *bufio.Writer
 
-	sm map[StreamId]*Stream // Active streams.
-	nw chan StreamId        // Stream requests a write.
+	sm map[byte]*Stream // Active streams.
+	nw chan byte        // Stream requests a write.
 
 	sync.Mutex
 }
 
 type Stream struct {
-	id StreamId
+	id byte
 
 	br *bytes.Buffer
 	bw *bytes.Buffer
 
-	nr chan bool     // Stream notified of a read.
-	nw chan StreamId // Stream requests a write.
-	wr bool          // Stream waiting for a read?
+	nr chan bool // Stream notified of a read.
+	nw chan byte // Stream requests a write.
+	wr bool      // Stream waiting for a read?
 
 	sync.Mutex
 }
@@ -42,8 +35,8 @@ func New(cn io.ReadWriter) *Mux {
 	br := bufio.NewReader(cn)
 	bw := bufio.NewWriter(cn)
 
-	sm := make(map[StreamId]*Stream)
-	nw := make(chan StreamId)
+	sm := make(map[byte]*Stream)
+	nw := make(chan byte)
 
 	m := &Mux{br, bw, sm, nw, sync.Mutex{}}
 
@@ -60,19 +53,22 @@ func (m *Mux) Close() error {
 }
 
 func (m *Mux) relayRead() {
+	buf := make([]byte, 1)
+
 	for {
-		var id StreamId
-		var sz StreamSize
-
-		if err := binary.Read(m.br, streamOrder, &id); err != nil {
+		if _, err := m.br.Read(buf); err != nil {
 			panic(err)
 		}
 
-		if err := binary.Read(m.br, streamOrder, &sz); err != nil {
+		id := buf[0]
+
+		size, err := binary.ReadVarint(m.br)
+
+		if err != nil {
 			panic(err)
 		}
 
-		if sz == 0 {
+		if size == 0 {
 			continue
 		}
 
@@ -82,13 +78,13 @@ func (m *Mux) relayRead() {
 
 		// Unknown stream? Discard.
 		if !ok {
-			m.br.Discard(int(sz))
+			m.br.Discard(int(size))
 			continue
 		}
 
 		s.Lock()
 
-		if _, err := io.CopyN(s.br, m.br, int64(sz)); err != nil {
+		if _, err := io.CopyN(s.br, m.br, size); err != nil {
 			panic(err)
 		}
 
@@ -103,20 +99,26 @@ func (m *Mux) relayRead() {
 }
 
 func (m *Mux) relayWrite() {
+	buf := make([]byte, binary.MaxVarintLen64)
+
 	for id := range m.nw {
 		m.Lock()
-		s := m.sm[id]
+		s, ok := m.sm[id]
 		m.Unlock()
 
-		// If the stream doesn't exist, this will SIGSEGV. As it should.
+		if !ok {
+			panic("undefined stream")
+		}
+
 		s.Lock()
 
-		if err := binary.Write(m.bw, streamOrder, id); err != nil {
+		if _, err := m.bw.Write([]byte{id}); err != nil {
 			panic(err)
 		}
 
-		// TODO: The write buffer may be larger than a uint32 can represent.
-		if err := binary.Write(m.bw, streamOrder, StreamSize(s.bw.Len())); err != nil {
+		n := binary.PutVarint(buf, int64(s.bw.Len()))
+
+		if _, err := m.bw.Write(buf[:n]); err != nil {
 			panic(err)
 		}
 
@@ -130,7 +132,7 @@ func (m *Mux) relayWrite() {
 	}
 }
 
-func (m *Mux) Stream(id StreamId) *Stream {
+func (m *Mux) Stream(id byte) *Stream {
 	br := new(bytes.Buffer)
 	bw := new(bytes.Buffer)
 	nr := make(chan bool)
