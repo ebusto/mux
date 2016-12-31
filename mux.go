@@ -46,12 +46,6 @@ func New(cn io.ReadWriter) *Mux {
 	return m
 }
 
-func (m *Mux) Close() error {
-	close(m.nw)
-
-	return nil
-}
-
 func (m *Mux) relayRead() {
 	for {
 		id, err := m.br.ReadByte()

@@ -1,5 +1,6 @@
 The mux package is a simple io.ReadWriteCloser multiplexer, intended for use over reliable but otherwise primitive connections, such as the XBee radio.
 
+# Example
 ```go
 package main
 
@@ -24,3 +25,6 @@ func main() {
 	...
 }
 ```
+
+# Frame
+The protocol is trivial, with each frame encoding the stream ID as a byte, the length as a variable integer, followed by the payload.
