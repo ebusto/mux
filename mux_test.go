@@ -22,13 +22,13 @@ func TestMux(t *testing.T) {
 	for i := 0; i < 255; i++ {
 		wg.Add(1)
 
-		go testMux(t, &wg, streamId(i), ma, mb)
+		go testMux(t, &wg, StreamId(i), ma, mb)
 	}
 
 	wg.Wait()
 }
 
-func testMux(t *testing.T, wg *sync.WaitGroup, id streamId, ma *Mux, mb *Mux) {
+func testMux(t *testing.T, wg *sync.WaitGroup, id StreamId, ma *Mux, mb *Mux) {
 	sa := ma.Stream(id)
 	sb := mb.Stream(id)
 

@@ -11,28 +11,28 @@ import (
 var streamOrder = binary.LittleEndian
 
 type (
-	streamId   uint8
-	streamSize uint32
+	StreamId   uint8
+	StreamSize uint32
 )
 
 type Mux struct {
 	br *bufio.Reader
 	bw *bufio.Writer
 
-	sm map[streamId]*Stream // Active streams.
-	nw chan streamId        // Stream requests a write.
+	sm map[StreamId]*Stream // Active streams.
+	nw chan StreamId        // Stream requests a write.
 
 	sync.Mutex
 }
 
 type Stream struct {
-	id streamId
+	id StreamId
 
 	br *bytes.Buffer
 	bw *bytes.Buffer
 
 	nr chan bool     // Stream notified of a read.
-	nw chan streamId // Stream requests a write.
+	nw chan StreamId // Stream requests a write.
 	wr bool          // Stream waiting for a read?
 
 	sync.Mutex
@@ -42,8 +42,8 @@ func New(cn io.ReadWriter) *Mux {
 	br := bufio.NewReader(cn)
 	bw := bufio.NewWriter(cn)
 
-	sm := make(map[streamId]*Stream)
-	nw := make(chan streamId)
+	sm := make(map[StreamId]*Stream)
+	nw := make(chan StreamId)
 
 	m := &Mux{br, bw, sm, nw, sync.Mutex{}}
 
@@ -61,8 +61,8 @@ func (m *Mux) Close() error {
 
 func (m *Mux) relayRead() {
 	for {
-		var id streamId
-		var sz streamSize
+		var id StreamId
+		var sz StreamSize
 
 		if err := binary.Read(m.br, streamOrder, &id); err != nil {
 			panic(err)
@@ -116,7 +116,7 @@ func (m *Mux) relayWrite() {
 		}
 
 		// TODO: The write buffer may be larger than a uint32 can represent.
-		if err := binary.Write(m.bw, streamOrder, streamSize(s.bw.Len())); err != nil {
+		if err := binary.Write(m.bw, streamOrder, StreamSize(s.bw.Len())); err != nil {
 			panic(err)
 		}
 
@@ -130,7 +130,7 @@ func (m *Mux) relayWrite() {
 	}
 }
 
-func (m *Mux) Stream(id streamId) *Stream {
+func (m *Mux) Stream(id StreamId) *Stream {
 	br := new(bytes.Buffer)
 	bw := new(bytes.Buffer)
 	nr := make(chan bool)
