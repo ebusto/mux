@@ -82,7 +82,7 @@ func (m *Mux) relayRead() {
 			continue
 		}
 
-		// Update the limited reader with the frame size.
+		// Don't read beyond this single frame.
 		m.lr.N = size
 
 		s.Lock()
@@ -91,10 +91,10 @@ func (m *Mux) relayRead() {
 			panic(err)
 		}
 
-		// If the stream is blocking on a read, wake it up.
-		if s.wr {
-			s.nr <- true
+		// If the stream is waiting to read, wake it up.
+		if s.wr == true {
 			s.wr = false
+			s.nr <- true
 		}
 
 		s.Unlock()
@@ -128,7 +128,7 @@ func (s *Stream) Read(p []byte) (int, error) {
 
 	// Zero bytes ready?
 	if s.br.Len() == 0 {
-		// Unlock so the reader can fill our read buffer.
+		// Unlock so the mux reader can fill our read buffer.
 		s.wr = true
 		s.Unlock()
 
