@@ -2,14 +2,38 @@ package mux
 
 import (
 	"bytes"
-	randc "crypto/rand"
 	"encoding/binary"
-	randm "math/rand"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	randc "crypto/rand"
+	randm "math/rand"
 )
+
+func BenchmarkMux(b *testing.B) {
+	na, nb := net.Pipe()
+
+	sa := New(na).Stream(0)
+	sb := New(nb).Stream(0)
+
+	buf := make([]byte, binary.MaxVarintLen64)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		n := binary.PutVarint(buf, int64(i))
+
+		if _, err := sa.Write(buf[:n]); err != nil {
+			b.Fatal(err)
+		}
+
+		if _, err := sb.Read(buf[:n]); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 func TestMux(t *testing.T) {
 	a, b := net.Pipe()
