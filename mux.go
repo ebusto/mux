@@ -146,6 +146,9 @@ func (s *Stream) Read(p []byte) (int, error) {
 }
 
 func (s *Stream) Write(p []byte) (int, error) {
+	// Store the frame size.
+	n := binary.PutVarint(s.bs, int64(len(p)))
+
 	// Acquire a Writer.
 	w := <-s.nw
 
@@ -155,8 +158,6 @@ func (s *Stream) Write(p []byte) (int, error) {
 	}
 
 	// Write the frame size.
-	n := binary.PutVarint(s.bs, int64(len(p)))
-
 	if _, err := w.Write(s.bs[:n]); err != nil {
 		panic(err)
 	}
