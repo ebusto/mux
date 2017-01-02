@@ -77,7 +77,6 @@ func (m *Mux) relayRead() {
 
 		// Unknown stream? Discard.
 		if !ok {
-			panic("discard")
 			m.br.Discard(int(size))
 			continue
 		}
