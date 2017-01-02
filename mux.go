@@ -71,15 +71,7 @@ func (m *Mux) relayRead() {
 			continue
 		}
 
-		m.Lock()
-		s, ok := m.sm[id]
-		m.Unlock()
-
-		// Unknown stream? Discard.
-		if !ok {
-			m.br.Discard(int(size))
-			continue
-		}
+		s := m.Stream(id)
 
 		// Don't read beyond this single frame.
 		m.lr.N = size
@@ -109,14 +101,18 @@ func (m *Mux) relayWrite() {
 }
 
 func (m *Mux) Stream(id byte) *Stream {
-	br := new(bytes.Buffer)
-	bs := make([]byte, binary.MaxVarintLen64)
-	nr := make(chan bool)
-
-	s := &Stream{id, br, bs, false, nr, m.nw, sync.Mutex{}}
-
 	m.Lock()
-	m.sm[id] = s
+
+	if _, ok := m.sm[id]; !ok {
+		br := new(bytes.Buffer)
+		bs := make([]byte, binary.MaxVarintLen64)
+		nr := make(chan bool)
+
+		m.sm[id] = &Stream{id, br, bs, false, nr, m.nw, sync.Mutex{}}
+	}
+
+	s := m.sm[id]
+
 	m.Unlock()
 
 	return s
