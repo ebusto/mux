@@ -26,7 +26,7 @@ type Mux struct {
 type Stream struct {
 	id byte
 	br *bytes.Buffer // Read buffer.
-	bs []byte        // Size buffer, when writing.
+	bs []byte        // When writing, size buffer. When reading, byte buffer.
 	wr bool          // Read wakeup required.
 	nr chan bool     // Wait to read.
 	nw chan Writer   // Wait to write.
@@ -145,7 +145,15 @@ func (s *Stream) Read(p []byte) (int, error) {
 	return n, err
 }
 
+func (s *Stream) ReadByte() (byte, error) {
+	_, err := s.Read(s.bs)
+
+	return s.bs[0], err
+}
+
 func (s *Stream) Write(p []byte) (int, error) {
+	s.Lock()
+
 	// Store the frame size.
 	n := binary.PutVarint(s.bs, int64(len(p)))
 
@@ -168,5 +176,13 @@ func (s *Stream) Write(p []byte) (int, error) {
 	// Return the Writer.
 	s.nw <- w
 
+	s.Unlock()
+
 	return n, err
+}
+
+func (s *Stream) WriteByte(c byte) error {
+	_, err := s.Write([]byte{c})
+
+	return err
 }
