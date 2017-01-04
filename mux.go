@@ -141,12 +141,6 @@ func (s *Stream) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (s *Stream) ReadByte() (byte, error) {
-	_, err := s.Read(s.bs)
-
-	return s.bs[0], err
-}
-
 func (s *Stream) Write(p []byte) (int, error) {
 	s.Lock()
 
@@ -175,10 +169,4 @@ func (s *Stream) Write(p []byte) (int, error) {
 	s.Unlock()
 
 	return n, err
-}
-
-func (s *Stream) WriteByte(c byte) error {
-	_, err := s.Write([]byte{c})
-
-	return err
 }
